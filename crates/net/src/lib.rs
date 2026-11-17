@@ -24,6 +24,11 @@
 #[cfg(target_arch = "wasm32")]
 pub const AVAILABLE: bool = false;
 
+/// Whether this build has the older encryption (#1504): the system's own TLS, for an account
+/// whose owner allows it.
+#[cfg(target_arch = "wasm32")]
+pub const LEGACY_TLS: bool = false;
+
 #[cfg(not(target_arch = "wasm32"))]
 mod anchors;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
@@ -131,6 +136,10 @@ mod native {
 
     /// Whether this build can talk to mail servers.
     pub const AVAILABLE: bool = true;
+
+    /// Whether this build has the older encryption (#1504): the system's own TLS, for an account
+    /// whose owner allows it (`legacy-tls`; never on Android).
+    pub const LEGACY_TLS: bool = crate::transport::SYSTEM_TLS;
 
     /// What went wrong. The reasons that are MailCraft's own words are texts the window says in
     /// its language ([`Text`], made with `said!`); what a server or the system said is kept as it

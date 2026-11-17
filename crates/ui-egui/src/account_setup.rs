@@ -216,6 +216,8 @@ pub enum Action {
     Imap,
     /// Ask the domain's DNS again where its Autodiscover is (Search again).
     LookAgain,
+    /// Connect again with the older encryption, for servers that offer only CBC suites (#1504).
+    OlderEncryption,
 }
 
 /// How setting the account up ended, for the last page to say.
@@ -487,6 +489,11 @@ pub struct AccountSetup {
     /// The outgoing server takes mail without a sign-in (a relay, #836): it is never shown the
     /// password. Only for an account that signs in with one.
     outgoing_without_sign_in: bool,
+    /// The owner allows the older encryption for the account's servers (#1504).
+    legacy_tls: bool,
+    /// The servers shared no cipher suite with MailCraft's own encryption: the password page
+    /// offers to connect with the older encryption.
+    legacy_offer: bool,
     /// The servers are shown on the password page.
     settings_open: bool,
     /// The servers are a guess made from the domain: the page says so.
@@ -643,6 +650,8 @@ impl AccountSetup {
             incoming: ServerFields::default(),
             outgoing: ServerFields::default(),
             outgoing_without_sign_in: false,
+            legacy_tls: false,
+            legacy_offer: false,
             settings_open: false,
             guessed: false,
             found: None,
@@ -741,6 +750,7 @@ impl AccountSetup {
         w.incoming = ServerFields::of(a.incoming.as_ref());
         w.outgoing = ServerFields::of(a.outgoing.as_ref());
         w.outgoing_without_sign_in = a.outgoing_without_sign_in;
+        w.legacy_tls = a.legacy_tls;
         if let Some(oauth) = &a.oauth {
             w.client_id = line(&oauth.client_id, 200);
             w.tenant = line(&oauth.tenant, 64);
@@ -843,6 +853,9 @@ impl AccountSetup {
                 }
             }
         }
+        if self.legacy_tls && (self.incoming.value().is_some() || self.outgoing.value().is_some()) {
+            m.insert("legacyTls".into(), json!(true));
+        }
         Some(("account.add", Value::Object(m)))
     }
 
@@ -898,6 +911,7 @@ impl AccountSetup {
             outgoing: self.outgoing.server(),
             username: self.login(email),
             outgoing_without_sign_in: self.oauth.is_none() && self.outgoing_without_sign_in && self.outgoing.value().is_some(),
+            legacy_tls: self.legacy_tls,
             oauth: self.oauth.clone(),
             ..Default::default()
         })
@@ -925,6 +939,9 @@ impl AccountSetup {
             m.insert("tenant".into(), json!(self.tenant.trim()));
         } else if self.outgoing.value().is_some() {
             m.insert("outgoingWithoutSignIn".into(), json!(self.outgoing_without_sign_in));
+        }
+        if self.incoming.value().is_some() || self.outgoing.value().is_some() {
+            m.insert("legacyTls".into(), json!(self.legacy_tls));
         }
         m
     }
@@ -980,6 +997,7 @@ impl AccountSetup {
         self.reveal = false;
         self.error.clear();
         self.app_passwords = false;
+        self.legacy_offer = false;
         self.focus = true;
     }
 
@@ -999,6 +1017,8 @@ impl AccountSetup {
         self.outgoing = preset.outgoing;
         // The tick is for the outgoing server it was set for, and is hidden on a provider's page (#836).
         self.outgoing_without_sign_in = false;
+        // So is the older encryption, for the servers it was allowed for (#1504).
+        self.legacy_tls = false;
         self.settings_open = false;
         self.guessed = false;
         self.found = None;
@@ -1178,6 +1198,10 @@ impl AccountSetup {
                     self.oauth = Some(OAuth { provider: mailcraft_model::OAuthProvider::Google, ..Default::default() });
                     self.proceed(app);
                 }
+            }
+            (Page::Password, Action::OlderEncryption) => {
+                self.legacy_tls = true;
+                return self.act(app, Action::Go);
             }
             (Page::Password, Action::Go) => {
                 // Do not let an Enter key or a command bypass the OAuth-first choice and
@@ -1859,7 +1883,7 @@ impl AccountSetup {
         self.check = None;
         match answer {
             Ok(()) => self.add_with_password(app),
-            Err(AccountCheckFailure { said, .. }) => {
+            Err(AccountCheckFailure { said, no_shared_suite }) => {
                 // The dialog says it once, in the interface's language; the log keeps the English
                 // for a problem report, and the English is what the kind of refusal is known by.
                 let e = said.to_string();
@@ -1871,6 +1895,12 @@ impl AccountSetup {
                 if google && e.starts_with("sign-in failed") && e != NO_PASSWORD_HERE {
                     self.error = tl!("Google didn't accept the password. An account with 2-Step Verification needs an app password: make one on Google's App passwords page, then paste it here in place of your usual password.").to_string();
                     self.app_passwords = true;
+                }
+                // An old server that offers only CBC suites (#1504): the owner may connect with
+                // the older encryption, in a build that has it.
+                if no_shared_suite && !self.legacy_tls && app.services.legacy_tls {
+                    self.error = tl!("This server offers only older encryption (CBC suites), which MailCraft doesn't use unless you allow it. You can connect with your system's encryption instead: it is less safe against some attacks on the connection. MailCraft still tries its own first each time, in case the server is updated.").to_string();
+                    self.legacy_offer = true;
                 }
             }
         }
@@ -2240,10 +2270,17 @@ impl AccountSetup {
             ui.add_space(2.0);
             disclosure(ui, tl!("Change account settings"), &mut self.settings_open, &t);
             if self.settings_open {
-                indented(ui, |ui| self.settings(ui, pass));
+                let older = app.services.legacy_tls;
+                indented(ui, |ui| self.settings(ui, pass, older));
             }
         });
         problem(ui, &self.error);
+        let mut older_encryption = false;
+        if self.legacy_offer {
+            egui::Frame::NONE.inner_margin(Margin { left: PAD, right: PAD, top: 4, bottom: 0 }).show(ui, |ui| {
+                older_encryption = button(ui, tl!("Connect with older encryption"), false, !self.password.0.is_empty()).clicked();
+            });
+        }
         if self.app_passwords && !oauth_first {
             egui::Frame::NONE.inner_margin(Margin { left: PAD, right: PAD, top: 0, bottom: 0 }).show(ui, |ui| {
                 ui.hyperlink(GOOGLE_APP_PASSWORDS);
@@ -2261,6 +2298,9 @@ impl AccountSetup {
         });
         if let Some(kind) = offered {
             return Some(Action::Pick(kind));
+        }
+        if older_encryption {
+            return Some(Action::OlderEncryption);
         }
         if let Some(change_method) = change_method {
             Some(change_method)
@@ -2465,7 +2505,7 @@ impl AccountSetup {
                 let server = self.ews.clone();
                 self.exchange_settings(ui, &t, server.as_ref());
             } else if !self.graph {
-                self.settings(ui, pass);
+                self.settings(ui, pass, app.services.legacy_tls);
             }
             if let Some(oauth) = &self.oauth {
                 field(ui, pass, "clientId", tl!("Application (client) ID"), &mut self.client_id, tl!("The one in File › Options"), 200);
@@ -2600,8 +2640,8 @@ impl AccountSetup {
         pass.field(&resp);
     }
 
-    /// The user name and the two servers.
-    fn settings(&mut self, ui: &mut Ui, pass: &mut Pass) {
+    /// The user name and the two servers. `older`: this build has the older encryption.
+    fn settings(&mut self, ui: &mut Ui, pass: &mut Pass, older: bool) {
         field(ui, pass, "username", tl!("User name"), &mut self.username, tl!("Usually the whole address"), LINE);
         server_row(ui, pass, tl!("Incoming mail (IMAP)"), "incoming", &mut self.incoming, "imap.example.org", (993, 143));
         server_row(ui, pass, tl!("Outgoing mail (SMTP)"), "outgoing", &mut self.outgoing, "smtp.example.org", (465, 587));
@@ -2618,6 +2658,22 @@ impl AccountSetup {
                 note(
                     ui,
                     tl!("The connection test only checks that this server answers. If it does want a sign-in, the first message you send says so."),
+                    pass.t.text_dim,
+                );
+            }
+        }
+        // The older encryption, for servers that offer only CBC suites (#1504). A build without it
+        // still lets the owner take it back.
+        if !self.incoming.host.trim().is_empty() || !self.outgoing.host.trim().is_empty() {
+            let tick = ui
+                .add_enabled(older || self.legacy_tls, egui::Checkbox::new(&mut self.legacy_tls, tl!("Allow older encryption if the servers need it")))
+                .on_hover_text(tl!("For an old server that offers only CBC suites: your system's encryption is used when MailCraft's own finds nothing in common with it."))
+                .on_disabled_hover_text(tl!("This build of MailCraft has no older encryption."));
+            pass.field(&tick);
+            if self.legacy_tls {
+                note(
+                    ui,
+                    tl!("Less safe: allow it only for a server that offers nothing newer. MailCraft tries its own encryption first each time."),
                     pass.t.text_dim,
                 );
             }
@@ -2905,6 +2961,8 @@ mod tests {
     mod help;
     /// Explicit confirmation of personal Outlook.com custom-domain aliases.
     mod legacy_alias;
+    /// Servers that offer only older encryption (#1504).
+    mod legacy_tls;
     /// An outgoing server that needs no sign-in (#836).
     mod relay_without_sign_in;
     /// The password's eye (#438).

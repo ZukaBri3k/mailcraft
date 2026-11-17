@@ -1291,6 +1291,11 @@ msgstr "Consenti la lettura dei calendari di altre persone"
 msgid "Allow Sending from Shared Mailboxes"
 msgstr "Consenti invio da cassette postali condivise"
 
+#. interface
+#: crates/ui-egui/src/account_setup.rs
+msgid "Allow older encryption if the servers need it"
+msgstr ""
+
 #. android
 #: apps/mailcraft-android/app/src/main/kotlin/work/mailcraft/android/Accounts.kt
 #, fuzzy
@@ -3360,6 +3365,11 @@ msgstr "Connetti a Microsoft (posta, calendario e contatti)"
 #, fuzzy
 msgid "Connect to show your category colours and working hours"
 msgstr "Connettere per mostrare i colori delle categorie e l'orario di lavoro"
+
+#. interface
+#: crates/ui-egui/src/account_setup.rs
+msgid "Connect with older encryption"
+msgstr ""
 
 #. what a command says
 #: crates/model/src/sync/progress.rs
@@ -5677,6 +5687,11 @@ msgid "For an account that signs in with Microsoft: the folders you keep under F
 msgstr "Per un account che accede con Microsoft: le cartelle tenute nei Preferiti di Outlook, nello stesso ordine. Vengono lette dal server e mai modificate lì. Senza questa opzione, vengono mostrati i preferiti contrassegnati in MailCraft."
 
 #. interface
+#: crates/ui-egui/src/account_setup.rs
+msgid "For an old server that offers only CBC suites: your system's encryption is used when MailCraft's own finds nothing in common with it."
+msgstr ""
+
+#. interface
 #: crates/ui-egui/src/ews_setup.rs
 #, fuzzy
 msgid "Forget"
@@ -7677,6 +7692,11 @@ msgstr "Lascia non verificato"
 #, fuzzy
 msgid "Leave this account out of this Send/Receive"
 msgstr "Escludi questo account da questo Invia/Ricevi"
+
+#. interface
+#: crates/ui-egui/src/account_setup.rs
+msgid "Less safe: allow it only for a server that offers nothing newer. MailCraft tries its own encryption first each time."
+msgstr ""
 
 #. interface
 #: crates/ui-egui/src/account_setup.rs
@@ -17407,6 +17427,11 @@ msgid "This build doesn't check for new versions."
 msgstr "Questa build non verifica la presenza di nuove versioni."
 
 #. interface
+#: crates/ui-egui/src/account_setup.rs
+msgid "This build of MailCraft has no older encryption."
+msgstr ""
+
+#. interface
 #: crates/ui-egui/src/calendar_view.rs
 #, fuzzy
 msgid "This calendar can only be read: new items can't go to it"
@@ -18019,6 +18044,11 @@ msgstr "Questa regola non può essere conservata sul server: {why}. Viene esegui
 #, fuzzy
 msgid "This series is still on its way to the account's server. Change one of its days once it is there (in a moment)."
 msgstr "Questa serie è ancora in viaggio verso il server dell'account. Modificarne uno dei giorni quando sarà arrivata (tra un momento)."
+
+#. interface
+#: crates/ui-egui/src/account_setup.rs
+msgid "This server offers only older encryption (CBC suites), which MailCraft doesn't use unless you allow it. You can connect with your system's encryption instead: it is less safe against some attacks on the connection. MailCraft still tries its own first each time, in case the server is updated."
+msgstr ""
 
 #. interface
 #: crates/ui-egui/src/shared_calendars.rs crates/ui-egui/src/shared_mailboxes.rs

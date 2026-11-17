@@ -1347,6 +1347,8 @@ fn services(
         system_time_locale: system_locale::system_time_locale(),
         // Whether the system plays animations, for Options › Animations (#1183).
         animations_enabled: system_motion::reader(),
+        // The older encryption for an old server (#1504), in a build that has it.
+        legacy_tls: mailcraft_net::LEGACY_TLS,
         ..Default::default()
     }
 }

@@ -421,6 +421,9 @@ pub struct Services {
     /// so account setup can tell an address on an Exchange server from one on an IMAP server.
     /// Only the domain is given, and none of the hosts is asked anything.
     pub lookup_autodiscover: Option<Box<dyn Fn(String) -> Receiver<Result<Vec<String>, String>>>>,
+    /// Desktop: this build has the older encryption (#1504), the system's own TLS for an account
+    /// whose mail servers offer only CBC suites; the window offers it only then.
+    pub legacy_tls: bool,
     /// Desktop: try signing in to an account's servers with a secret (a password, or an access
     /// token for an account that signs in on its provider's page) on a background thread, before
     /// the account is added.
