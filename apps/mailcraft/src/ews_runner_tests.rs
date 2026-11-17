@@ -64,7 +64,10 @@ fn a_failed_exchange_is_told_by_its_kind_and_a_certificate_is_kept_apart() {
     assert_eq!(transport.problem(), None);
     assert_eq!(transport.judged(NetError::Connect { host: "mail.example.org".into(), reason: "refused".into() }), TransportError::Unreachable);
     assert_eq!(transport.judged(NetError::Config("x".into())), TransportError::Other);
-    assert_eq!(transport.judged(NetError::Tls { host: "mail.example.org".into(), reason: "alert".into() }), TransportError::Tls);
+    assert_eq!(
+        transport.judged(NetError::Tls { host: "mail.example.org".into(), reason: "alert".into(), no_shared_suite: false }),
+        TransportError::Tls
+    );
     assert_eq!(transport.problem(), None, "a plain TLS failure is no certificate question");
     assert_eq!(transport.judged(NetError::Certificate(Box::new(CertificateProblem::Changed(info())))), TransportError::Tls);
     assert!(matches!(transport.problem(), Some(CertificateProblem::Changed(_))));

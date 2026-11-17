@@ -75,6 +75,14 @@ impl Default for Patience {
     }
 }
 
+/// Which TLS a mail connection (IMAP, SMTP) shakes hands with.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum Stack {
+    /// rustls, with its AEAD suites alone (AES-GCM, ChaCha20-Poly1305): every connection.
+    #[default]
+    Rustls,
+}
+
 enum Io {
     Plain(TcpStream),
     Tls(Box<StreamOwned<ClientConnection, TcpStream>>),
@@ -256,7 +264,14 @@ pub(crate) fn checked_host(server: &Server) -> Result<String, NetError> {
 /// the host, for error messages and the certificate check. It waits as `patience` says, and for
 /// nothing longer than a mail server is given.
 pub(crate) fn open<'a>(server: &Server, service: Service, patience: &Patience) -> Result<(Stream<'a>, String), NetError> {
-    open_with(server, service, patience, None)
+    open_on(server, service, patience, Stack::Rustls)
+}
+
+/// [`open`] for a mail server, shaking hands with `stack` when it asks for TLS.
+pub(crate) fn open_on<'a>(server: &Server, service: Service, patience: &Patience, stack: Stack) -> Result<(Stream<'a>, String), NetError> {
+    match stack {
+        Stack::Rustls => open_with(server, service, patience, None),
+    }
 }
 
 /// [`open`] with TLS settings of the caller's (`None`: the usual ones, `crate::tls`).
@@ -281,12 +296,13 @@ pub(crate) fn open_within<'a>(server: &Server, service: Service, connect: Durati
     open(server, service, &Patience { connect, io, ..Patience::default() })
 }
 
-/// Wrap a connection in TLS after the server agreed to STARTTLS. It goes on as it was set up.
-pub(crate) fn upgrade<'a>(stream: Stream<'a>, host: &str) -> Result<Stream<'a>, NetError> {
+/// Wrap a connection in TLS, shaking hands with `stack`, after the server agreed to STARTTLS. It
+/// goes on as it was set up.
+pub(crate) fn upgrade<'a>(stream: Stream<'a>, host: &str, stack: Stack) -> Result<Stream<'a>, NetError> {
     let Stream { io, cancel, patience, .. } = stream;
-    let mut secured = match io {
-        Io::Plain(tcp) => secure(tcp, host, None)?,
-        tls @ Io::Tls(_) => Stream::over(tls),
+    let mut secured = match (io, stack) {
+        (Io::Plain(tcp), Stack::Rustls) => secure(tcp, host, None)?,
+        (tls @ Io::Tls(_), _) => Stream::over(tls),
     };
     (secured.cancel, secured.patience) = (cancel, patience);
     Ok(secured)
@@ -367,7 +383,7 @@ fn tls_config() -> Result<Arc<ClientConfig>, String> {
 
 /// Shake hands over `tcp` and check the server's certificate against `host`.
 fn secure<'a>(mut tcp: TcpStream, host: &str, tls: Option<Arc<ClientConfig>>) -> Result<Stream<'a>, NetError> {
-    let failed = |reason: Text| NetError::Tls { host: host.to_string(), reason };
+    let failed = |reason: Text| NetError::tls(host, reason);
     let config = match tls {
         Some(config) => config,
         // (The system's own words, as it said them.)
@@ -390,7 +406,11 @@ fn secure<'a>(mut tcp: TcpStream, host: &str, tls: Option<Arc<ClientConfig>>) ->
             return Err(failed(said!("the server took too long")));
         }
         waits(&tcp, io.min(left))?;
-        connection.complete_io(&mut tcp).map_err(|e| failed(handshake_problem(&e)))?;
+        connection.complete_io(&mut tcp).map_err(|e| NetError::Tls {
+            host: host.to_string(),
+            reason: handshake_problem(&e),
+            no_shared_suite: no_shared_suite(&e),
+        })?;
     }
     waits(&tcp, io)?;
     Ok(Stream::over(Io::Tls(Box::new(StreamOwned::new(connection, tcp)))))
@@ -412,6 +432,11 @@ fn handshake_problem(e: &std::io::Error) -> Text {
         // rustls says what is wrong with the certificate or the protocol, in its own words.
         _ => Text::verbatim(e.to_string().chars().filter(|c| !c.is_control()).take(200).collect::<String>()),
     }
+}
+
+/// Whether a handshake failed for want of a cipher suite both sides know, as far as can be told.
+fn no_shared_suite(e: &std::io::Error) -> bool {
+    no_suite_in_common(e) || refused_handshake(e)
 }
 
 /// Whether the library itself found no cipher suite in common.
@@ -674,7 +699,7 @@ mod tests {
             }
         });
         // TLS to loopback is allowed; the handshake is what fails.
-        let Err(NetError::Tls { host, reason }) = open(&server("localhost", port, Security::Tls), Service::Imap, &Patience::default()) else {
+        let Err(NetError::Tls { host, reason, .. }) = open(&server("localhost", port, Security::Tls), Service::Imap, &Patience::default()) else {
             panic!("a handshake with a plain-text server succeeded")
         };
         assert_eq!(host, "localhost");

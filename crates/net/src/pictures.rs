@@ -773,7 +773,7 @@ fn handshake_trouble(error: &std::io::Error) -> String {
 
 /// Shake hands over `line` and check the server's certificate against `host`.
 fn secure(mut line: Timed, host: &str) -> Result<Line, PictureError> {
-    let failed = |reason: String| PictureError::Net(NetError::Tls { host: host.to_string(), reason: reason.into() });
+    let failed = |reason: String| PictureError::Net(NetError::tls(host, reason.into()));
     let config = tls_config().map_err(failed)?;
     let name = ServerName::try_from(host.to_string()).map_err(|_| failed("its name isn't one a certificate can be checked against".into()))?;
     let mut connection = ClientConnection::new(config, name).map_err(|e| failed(e.to_string()))?;

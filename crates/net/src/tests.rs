@@ -630,7 +630,10 @@ fn starttls_is_never_given_up_for_plain_text() {
     strict.incoming.as_mut().unwrap().security = Security::StartTls;
     strict.outgoing.as_mut().unwrap().security = Security::StartTls;
     let error = test_account(&strict, PASSWORD).unwrap_err();
-    assert_eq!(error, NetError::Tls { host: "127.0.0.1".into(), reason: mailcraft_i18n::said!("the server doesn't offer STARTTLS") });
+    assert_eq!(
+        error,
+        NetError::Tls { host: "127.0.0.1".into(), reason: mailcraft_i18n::said!("the server doesn't offer STARTTLS"), no_shared_suite: false }
+    );
     let mut request = request(strict.clone(), local_folders());
     request.outbox = vec![Message { id: 3, to: vec![Address::new("Bob", "bob@example.org")], ..Default::default() }];
     let result = sync(&request);

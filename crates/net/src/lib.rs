@@ -143,6 +143,10 @@ mod native {
         Tls {
             host: String,
             reason: Text,
+            /// The handshake failed for want of a cipher suite both sides know: the library found
+            /// none, or the server refused with the alert that most often means that. Most often
+            /// an old server that offers only CBC suites, which rustls doesn't have (#977).
+            no_shared_suite: bool,
         },
         Proto(mailcraft_proto::ProtoError),
         Config(Text),
@@ -194,7 +198,7 @@ mod native {
         pub fn said(&self) -> Text {
             match self {
                 NetError::Connect { host, reason } => said!("couldn't reach {host}: {reason}", host, reason = Arg::said(reason.clone())),
-                NetError::Tls { host, reason } => {
+                NetError::Tls { host, reason, .. } => {
                     said!("couldn't make a secure connection to {host}: {reason}", host, reason = Arg::said(reason.clone()))
                 }
                 NetError::Proto(e) => e.said(),
@@ -215,7 +219,7 @@ mod native {
             let blank = |text: Text| text.map_plain(&|said: String| scrub(&said, secret));
             match self {
                 NetError::Connect { host, reason } => NetError::Connect { host, reason: blank(reason) },
-                NetError::Tls { host, reason } => NetError::Tls { host, reason: blank(reason) },
+                NetError::Tls { host, reason, no_shared_suite } => NetError::Tls { host, reason: blank(reason), no_shared_suite },
                 NetError::Config(text) => NetError::Config(blank(text)),
                 NetError::Proto(e) => NetError::Proto(match e {
                     P::Io(text) => P::Io(blank(text)),
@@ -248,6 +252,19 @@ mod native {
         /// or a denied browser consent must never make us erase an otherwise usable token.
         pub fn is_revoked_google_refresh(&self) -> bool {
             matches!(self, NetError::Proto(mailcraft_proto::ProtoError::Auth(reason)) if reason.to_string() == crate::oauth::GOOGLE_REFRESH_REVOKED)
+        }
+
+        /// A secure connection to `host` that couldn't be made, for a reason other than a cipher
+        /// suite missing on one side.
+        pub(crate) fn tls(host: impl Into<String>, reason: Text) -> NetError {
+            NetError::Tls { host: host.into(), reason, no_shared_suite: false }
+        }
+
+        /// Whether a secure connection failed for want of a cipher suite both sides know
+        /// ([`NetError::Tls`]): the one failure that the older encryption might get past, for
+        /// an account whose owner allows it.
+        pub fn legacy_tls_would_help(&self) -> bool {
+            matches!(self, NetError::Tls { no_shared_suite: true, .. })
         }
 
         /// Whether the other side couldn't be reached or stopped answering, as against an answer
@@ -300,6 +317,11 @@ mod password_tests;
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod report_tests;
+
+// (`cfg(test)` on its own line, so that clippy knows the helpers that unwrap are test code.)
+#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+mod no_shared_suite_tests;
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod said_tests;

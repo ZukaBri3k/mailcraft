@@ -94,17 +94,19 @@ pub(crate) fn open_smtp_with<'a>(
             return Err(not_signed_in(account));
         }
     }
-    let (mut stream, host) = transport::open(server, Service::Smtp, patience)?;
+    // rustls, which has only the AEAD suites.
+    let stack = transport::Stack::Rustls;
+    let (mut stream, host) = transport::open_on(server, Service::Smtp, patience, stack)?;
     stream.watch(cancel);
     let mut smtp = Smtp::connect(stream)?;
     let mut offered = smtp.hello(CLIENT_NAME)?;
     if server.security == Security::StartTls {
         // Never carry on in the clear when encryption was asked for.
         if !offered.starttls {
-            return Err(NetError::Tls { host, reason: said!("the server doesn't offer STARTTLS") });
+            return Err(NetError::tls(host, said!("the server doesn't offer STARTTLS")));
         }
         let plain = smtp.starttls()?;
-        smtp = Smtp::resume(transport::upgrade(plain, &host)?);
+        smtp = Smtp::resume(transport::upgrade(plain, &host, stack)?);
         offered = smtp.hello(CLIENT_NAME)?;
     }
     if account.oauth.is_some() {

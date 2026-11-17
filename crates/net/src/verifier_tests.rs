@@ -37,7 +37,7 @@ fn imap(server: Arc<ServerConfig>) -> Fake<ImapWorld> {
 /// Why the connection to the fake was refused, which must be its certificate; no password went.
 fn refused(peer: &Fake<ImapWorld>) -> String {
     let Err(error) = crate::sync::open_imap(&account(peer.port), "invented") else { panic!("the connection was allowed") };
-    let NetError::Tls { host, reason } = error else { panic!("refused, but not by the certificate check: {error}") };
+    let NetError::Tls { host, reason, .. } = error else { panic!("refused, but not by the certificate check: {error}") };
     assert_eq!(host, "127.0.0.1");
     assert!(!peer.world().log.iter().any(|s| s.contains("AUTHENTICATE") || s.contains(" LOGIN ")));
     reason.to_string()

@@ -437,6 +437,22 @@ impl GmailSwitches {
     }
 }
 
+/// Why the host couldn't check an account on its servers.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AccountCheckFailure {
+    /// What went wrong, for the window to say in its language (#872).
+    pub said: mailcraft_i18n::Text,
+    /// The secure connection failed for want of a cipher suite both sides know: an old server
+    /// that offers only CBC suites, most often.
+    pub no_shared_suite: bool,
+}
+
+impl From<mailcraft_i18n::Text> for AccountCheckFailure {
+    fn from(said: mailcraft_i18n::Text) -> Self {
+        AccountCheckFailure { said, no_shared_suite: false }
+    }
+}
+
 /// The Add Account wizard, and Account Settings for an account that exists.
 pub struct AccountSetup {
     page: Page,
@@ -500,7 +516,7 @@ pub struct AccountSetup {
     /// Autodiscover answer is awaited, and for IMAP when the owner says it isn't Exchange.
     discovered: Option<Discovered>,
     /// Whether the servers took the password, once the host knows.
-    check: Option<Receiver<Result<(), mailcraft_i18n::Text>>>,
+    check: Option<Receiver<Result<(), AccountCheckFailure>>>,
     /// The owner is in the browser, signing in for this wizard.
     waiting: bool,
     /// This is a reconnect of an existing Google OAuth account, not an app-password conversion.
@@ -1836,12 +1852,14 @@ impl AccountSetup {
         let answer = match self.check.as_ref().map(Receiver::try_recv) {
             Some(Err(TryRecvError::Empty)) => return,
             Some(Ok(answer)) => answer,
-            Some(Err(TryRecvError::Disconnected)) | None => Err(mailcraft_i18n::Text::verbatim(tl!("Checking the account stopped unexpectedly"))),
+            Some(Err(TryRecvError::Disconnected)) | None => {
+                Err(AccountCheckFailure::from(mailcraft_i18n::Text::verbatim(tl!("Checking the account stopped unexpectedly"))))
+            }
         };
         self.check = None;
         match answer {
             Ok(()) => self.add_with_password(app),
-            Err(said) => {
+            Err(AccountCheckFailure { said, .. }) => {
                 // The dialog says it once, in the interface's language; the log keeps the English
                 // for a problem report, and the English is what the kind of refusal is known by.
                 let e = said.to_string();
@@ -2982,9 +3000,10 @@ mod tests {
     /// [`checks`] with the answer as the host says it: a text for the window to say in its
     /// language.
     fn checks_said(app: &mut MailApp, answer: Option<Result<(), mailcraft_i18n::Text>>) -> Log<(Account, String)> {
+        let answer = answer.map(|a| a.map_err(AccountCheckFailure::from));
         let asked: Log<(Account, String)> = Default::default();
         let log = asked.clone();
-        let silent: Log<mpsc::Sender<Result<(), mailcraft_i18n::Text>>> = Default::default();
+        let silent: Log<mpsc::Sender<Result<(), AccountCheckFailure>>> = Default::default();
         app.services.test_account = Some(Box::new(move |account, secret| {
             log.lock().unwrap().push((account, secret));
             let (tx, rx) = mpsc::channel();

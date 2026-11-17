@@ -1201,7 +1201,10 @@ fn services(
         })),
         test_account: Some(Box::new(move |account, secret| {
             // The window says why in its own language (#872).
-            background(&test_ctx, "account check", move || mailcraft_net::test_account(&account, &secret).map_err(|e| e.said()))
+            background(&test_ctx, "account check", move || {
+                mailcraft_net::test_account(&account, &secret)
+                    .map_err(|e| mailcraft_ui_egui::AccountCheckFailure { said: e.said(), no_shared_suite: e.legacy_tls_would_help() })
+            })
         })),
         // The copy of the mailbox kept before an account switches to Microsoft Graph: a large
         // mailbox takes a while to write, and the window shows a spinner meanwhile (#118).

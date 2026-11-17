@@ -504,16 +504,18 @@ pub(crate) fn open_imap_with<'a>(
     if account.oauth.is_none() && secret.is_empty() {
         return Err(NetError::Config(said!("enter a password to sign in")));
     }
-    let (mut stream, host) = transport::open(server, Service::Imap, patience)?;
+    // rustls, which has only the AEAD suites.
+    let stack = transport::Stack::Rustls;
+    let (mut stream, host) = transport::open_on(server, Service::Imap, patience, stack)?;
     stream.watch(cancel);
     let mut imap = Imap::connect(stream)?;
     if server.security == Security::StartTls {
         // Never carry on in the clear when encryption was asked for.
         if !imap.capabilities()?.iter().any(|c| c == "STARTTLS") {
-            return Err(NetError::Tls { host, reason: said!("the server doesn't offer STARTTLS") });
+            return Err(NetError::tls(host, said!("the server doesn't offer STARTTLS")));
         }
         let plain = imap.starttls()?;
-        imap = Imap::resume(transport::upgrade(plain, &host)?);
+        imap = Imap::resume(transport::upgrade(plain, &host, stack)?);
     }
     if imap.is_authenticated() {
         return Ok(imap);
