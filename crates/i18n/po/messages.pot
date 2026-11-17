@@ -627,8 +627,8 @@ msgid ""
 "Settings"
 msgstr ""
 
-#. command label, interface
-#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs
+#. command label, interface, ribbon location
+#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs crates/ui-egui/src/lib.rs
 msgid "Account Settings"
 msgstr ""
 
@@ -1056,6 +1056,11 @@ msgstr ""
 #. interface
 #: crates/ui-egui/src/forms.rs
 msgid "Allow New Time Proposals"
+msgstr ""
+
+#. command label
+#: crates/ui-egui/src/lib.rs
+msgid "Allow Older Encryption"
 msgstr ""
 
 #. command label
@@ -8769,6 +8774,11 @@ msgstr ""
 #. interface
 #: crates/ui-egui/src/windows.rs
 msgid "Only a meeting you organize has Find a Time"
+msgstr ""
+
+#. interface
+#: crates/ui-egui/src/lib.rs
+msgid "Only an account with mail servers can use the older encryption"
 msgstr ""
 
 #. what a command says

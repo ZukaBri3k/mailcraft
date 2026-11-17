@@ -752,8 +752,8 @@ msgid ""
 "Settings"
 msgstr "Kontoeinstellungen"
 
-#. command label, interface
-#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs
+#. command label, interface, ribbon location
+#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs crates/ui-egui/src/lib.rs
 #, fuzzy
 msgid "Account Settings"
 msgstr "Kontoeinstellungen"
@@ -1271,6 +1271,11 @@ msgstr "Erlauben Sie MailCraft auf der Seite, die sich in Ihrem Browser geöffne
 #, fuzzy
 msgid "Allow New Time Proposals"
 msgstr "Neue Zeitvorschläge zulassen"
+
+#. command label
+#: crates/ui-egui/src/lib.rs
+msgid "Allow Older Encryption"
+msgstr ""
 
 #. command label
 #: crates/ui-egui/src/lib.rs
@@ -10566,6 +10571,11 @@ msgstr "Vorerst meldet sich auf dem Telefon nur ein Microsoft-Konto an."
 #, fuzzy
 msgid "Only a meeting you organize has Find a Time"
 msgstr "Nur eine Besprechung, die Sie organisieren, hat „Zeit suchen“"
+
+#. interface
+#: crates/ui-egui/src/lib.rs
+msgid "Only an account with mail servers can use the older encryption"
+msgstr ""
 
 #. what a command says
 #: crates/engine/src/cmd/unsubscribe.rs

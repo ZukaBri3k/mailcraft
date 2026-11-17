@@ -742,8 +742,8 @@ msgid ""
 "Settings"
 msgstr "Accountinstellingen"
 
-#. command label, interface
-#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs
+#. command label, interface, ribbon location
+#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs crates/ui-egui/src/lib.rs
 msgid "Account Settings"
 msgstr "Accountinstellingen"
 
@@ -1241,6 +1241,11 @@ msgstr "MailCraft toestaan te verzenden vanuit gedeelde postvakken op de pagina 
 #, fuzzy
 msgid "Allow New Time Proposals"
 msgstr "Nieuwe tijdvoorstellen toestaan"
+
+#. command label
+#: crates/ui-egui/src/lib.rs
+msgid "Allow Older Encryption"
+msgstr ""
 
 #. command label
 #: crates/ui-egui/src/lib.rs
@@ -10189,6 +10194,11 @@ msgstr "Voorlopig kan alleen een Microsoft-account zich op de telefoon aanmelden
 #, fuzzy
 msgid "Only a meeting you organize has Find a Time"
 msgstr "Alleen een vergadering die u organiseert, heeft Een tijd zoeken"
+
+#. interface
+#: crates/ui-egui/src/lib.rs
+msgid "Only an account with mail servers can use the older encryption"
+msgstr ""
 
 #. what a command says
 #: crates/engine/src/cmd/unsubscribe.rs

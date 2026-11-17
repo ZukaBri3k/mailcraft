@@ -3844,6 +3844,9 @@ impl Session {
             (Ok(_), Some(_)) if changes_owners_message(compose.as_ref(), self.compose.as_ref()) => Err(CmdError::Failed(format!(
                 "`{id}` would change the message the owner is writing, which is theirs until they close it; nothing was changed. Ask the owner to make the change, or to close the message first"
             ))),
+            (Ok(_), Some(_)) if crate::agent::allows_legacy_tls(&before.mailbox, &self.mailbox) => {
+                Err(CmdError::Failed(crate::agent::LEGACY_TLS_OWNERS.replace("{id}", id)))
+            }
             (Ok(_), Some(allow)) if let Some(c) = crate::agent::overstep(&before.mailbox, &self.mailbox, allow) => {
                 Err(CmdError::Failed(crate::agent::needs_owner(id, c, false, "do more than an agent is allowed to; nothing was changed")))
             }

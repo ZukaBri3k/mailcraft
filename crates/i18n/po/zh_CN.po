@@ -755,8 +755,8 @@ msgstr ""
 "账户\n"
 "设置"
 
-#. command label, interface
-#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs
+#. command label, interface, ribbon location
+#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs crates/ui-egui/src/lib.rs
 #, fuzzy
 msgid "Account Settings"
 msgstr "账户设置"
@@ -1274,6 +1274,11 @@ msgstr "在浏览器打开的页面上，允许 MailCraft 从共享邮箱发送�
 #, fuzzy
 msgid "Allow New Time Proposals"
 msgstr "允许新的时间提议"
+
+#. command label
+#: crates/ui-egui/src/lib.rs
+msgid "Allow Older Encryption"
+msgstr ""
 
 #. command label
 #: crates/ui-egui/src/lib.rs
@@ -10570,6 +10575,11 @@ msgstr "目前手机上只能使用 Microsoft 账户登录。"
 #, fuzzy
 msgid "Only a meeting you organize has Find a Time"
 msgstr "只有您组织的会议才有“查找时间”"
+
+#. interface
+#: crates/ui-egui/src/lib.rs
+msgid "Only an account with mail servers can use the older encryption"
+msgstr ""
 
 #. what a command says
 #: crates/engine/src/cmd/unsubscribe.rs

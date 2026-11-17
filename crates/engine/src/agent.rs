@@ -589,6 +589,9 @@ const SETTINGS: &[&str] = &[
 ];
 
 const NEVER: &[&str] = &[
+    // The older encryption for an account's mail servers (#1504): weakening it is the owner's
+    // choice alone. An agent may turn it off (`account.edit`), never on.
+    "ui.allowLegacyTls",
     // The owner's Dismiss and Snooze of a follow-up reminder (#948): an agent never does either
     // for the owner.
     "mail.dismissReminder",
@@ -1165,6 +1168,11 @@ fn verdict(s: &Session, id: &str, params: &Value, allow: &[Class], yes: Option<C
         {
             return Verdict::Refuse(format!("`{id}`: {e}"));
         }
+    }
+    // The older encryption is turned on by the owner alone (#1504); turning it off is an agent's
+    // to do as any other change of an account.
+    if matches!(id, "account.add" | "account.edit") && params.get("legacyTls") == Some(&Value::Bool(true)) {
+        return Verdict::Refuse(LEGACY_TLS_OWNERS.replace("{id}", id));
     }
     // Add to Tasks may take the selection, but a message named wrongly is refused all the same.
     if id == "tasks.fromMessage"
@@ -2005,6 +2013,15 @@ fn value_text(v: &Value) -> String {
         Value::Array(a) => a.iter().filter_map(Value::as_str).collect::<Vec<_>>().join("; "),
         _ => String::new(),
     }
+}
+
+/// Why an agent's call that would allow the older encryption is refused (`{id}`: the command).
+pub(crate) const LEGACY_TLS_OWNERS: &str = "`{id}` would allow the older encryption (CBC suites) for an account's mail servers, which weakens what protects its mail and password: only the owner turns that on, in the account's settings. An agent may turn it off (`legacyTls`: false); nothing was changed";
+
+/// Whether an account allows the older encryption (#1504) after a command and didn't before
+/// it, whatever path the command took there: for an agent, never.
+pub(crate) fn allows_legacy_tls(before: &Mailbox, after: &Mailbox) -> bool {
+    after.accounts.iter().any(|a| a.legacy_tls && !before.accounts.iter().any(|b| b.id == a.id && b.legacy_tls))
 }
 
 /// What a command did that its grant didn't cover: mail put into an Outbox (it would be sent),

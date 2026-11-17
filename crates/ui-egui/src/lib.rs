@@ -149,6 +149,8 @@ mod late_work_tests;
 #[cfg(test)]
 mod leave_message_tests;
 #[cfg(test)]
+mod legacy_tls_tests;
+#[cfg(test)]
 mod list_keys_tests;
 #[cfg(test)]
 mod list_rearrange_tests;
@@ -1230,6 +1232,12 @@ pub const UI_COMMANDS: &[(&str, &str, &str, &str)] = &[
         "Allow Changing Automatic Replies",
         "File › Info",
         r#"{"account": number (a Microsoft account), "confirmed": true} — asks the owner, on Microsoft's page in the browser, to let MailCraft change the mailbox's settings (MailboxSettings.ReadWrite) for its automatic replies, by itself: never with a sign-in. The window asks first, when a change finds the sign-in doesn't cover it, and File › Info has "Ask again". Allowed, the change that waited goes; refused, or when an administrator has to approve first, it is dropped and the window says what to do next. Answers {"pending": "signIn", "account": number}"#,
+    ),
+    (
+        "ui.allowLegacyTls",
+        "Allow Older Encryption",
+        "File › Account Settings",
+        r#"{"account": number (an account with mail servers), "confirmed": true} — lets the account's IMAP and SMTP servers be reached with the older encryption (CBC suites), for an old server that offers nothing newer: when MailCraft's own TLS finds no cipher suite in common with one of them, the system's TLS is tried, TLS 1.2 at least, with the certificates the system trusts. The owner's alone: never an agent's, which may only turn it off (`account.edit` with `legacyTls`: false). Answers what `account.edit` answers"#,
     ),
     (
         "ui.checkCalendar",
@@ -2851,6 +2859,17 @@ impl MailApp {
                 }
                 let Some(account) = p.get("account").and_then(Value::as_u64) else { return Some(Err(tl!("`account` is required").to_string())) };
                 self.begin_replies_sign_in(account)
+            }
+            "ui.allowLegacyTls" => {
+                if p.get("confirmed").and_then(Value::as_bool) != Some(true) {
+                    return Some(Err(tl!("Say that this is meant with \"confirmed\": true.").to_string()));
+                }
+                let Some(account) = p.get("account").and_then(Value::as_u64) else { return Some(Err(tl!("`account` is required").to_string())) };
+                let answer = self.execute("account.edit", json!({"id": account, "legacyTls": true}));
+                if answer.is_ok() && !self.session.mailbox.account(account).is_some_and(|a| a.legacy_tls) {
+                    return Some(Err(tl!("Only an account with mail servers can use the older encryption").to_string()));
+                }
+                answer
             }
             "ui.allowTasks" => {
                 if p.get("confirmed").and_then(Value::as_bool) != Some(true) {

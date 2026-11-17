@@ -751,8 +751,8 @@ msgstr ""
 "Paramètres\n"
 "du compte"
 
-#. command label, interface
-#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs
+#. command label, interface, ribbon location
+#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs crates/ui-egui/src/lib.rs
 #, fuzzy
 msgid "Account Settings"
 msgstr "Paramètres du compte"
@@ -1272,6 +1272,11 @@ msgstr "Autorisez MailCraft à envoyer depuis les boîtes aux lettres partagées
 #, fuzzy
 msgid "Allow New Time Proposals"
 msgstr "Autoriser les propositions de nouvel horaire"
+
+#. command label
+#: crates/ui-egui/src/lib.rs
+msgid "Allow Older Encryption"
+msgstr "Autoriser le chiffrement ancien"
 
 #. command label
 #: crates/ui-egui/src/lib.rs
@@ -10533,6 +10538,11 @@ msgstr "Seul un compte Microsoft peut se connecter sur le téléphone pour l'ins
 #, fuzzy
 msgid "Only a meeting you organize has Find a Time"
 msgstr "Seule une réunion que vous organisez dispose de Trouver un horaire"
+
+#. interface
+#: crates/ui-egui/src/lib.rs
+msgid "Only an account with mail servers can use the older encryption"
+msgstr "Seul un compte avec des serveurs de messagerie peut utiliser le chiffrement ancien"
 
 #. what a command says
 #: crates/engine/src/cmd/unsubscribe.rs

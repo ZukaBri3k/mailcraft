@@ -71,3 +71,48 @@ fn a_mailbox_from_before_has_it_off_and_a_file_that_is_off_says_nothing() {
     assert!(!account.legacy_tls);
     assert!(serde_json::to_value(&account).unwrap().get("legacyTls").is_none());
 }
+
+/// The account `account.add` makes from `params`, as the owner.
+fn added(s: &mut Session, params: Value) -> u64 {
+    s.run("account.add", &params).unwrap()["id"].as_u64().unwrap()
+}
+
+fn old_servers(legacy: bool) -> Value {
+    json!({"email": "ada@old.example", "incoming": {"host": "imap.old.example"}, "outgoing": {"host": "smtp.old.example"}, "legacyTls": legacy})
+}
+
+#[test]
+fn an_agent_is_refused_turning_on_the_older_encryption_even_when_allowed_everything() {
+    use crate::agent::{Access, Class, Verdict, check};
+    let mut s = session();
+    let id = added(&mut s, old_servers(false));
+    for (command, params) in [("account.edit", json!({"id": id, "legacyTls": true})), ("account.add", old_servers(true))] {
+        let Verdict::Refuse(why) = check(&s, command, &params, &Class::ALL) else { panic!("{command} {params} wasn't refused") };
+        assert!(why.contains("only the owner"), "{why}");
+    }
+    assert!(matches!(check(&s, "account.edit", &json!({"id": id, "legacyTls": false}), &Class::ALL), Verdict::Run));
+    assert_eq!(crate::agent::access("ui.allowLegacyTls"), Some(Access::Never));
+}
+
+#[test]
+fn whatever_path_an_agent_takes_the_older_encryption_stays_off() {
+    let mut s = session();
+    let id = added(&mut s, old_servers(false));
+    // Past the gate, by the command itself.
+    s.agent = Some(crate::agent::Class::ALL.to_vec());
+    assert!(refusal(&mut s, "account.edit", json!({"id": id, "legacyTls": true})).contains("only the owner"));
+    assert!(!s.mailbox.account(id).unwrap().legacy_tls);
+    s.agent = None;
+    // The owner turns it on, then off; an agent's undo would turn it on again.
+    s.run("account.edit", &json!({"id": id, "legacyTls": true})).unwrap();
+    s.run("account.edit", &json!({"id": id, "legacyTls": false})).unwrap();
+    s.agent = Some(crate::agent::Class::ALL.to_vec());
+    assert!(refusal(&mut s, "edit.undo", json!({})).contains("only the owner"));
+    assert!(!s.mailbox.account(id).unwrap().legacy_tls);
+    // Turning it off is an agent's to do.
+    s.agent = None;
+    s.run("account.edit", &json!({"id": id, "legacyTls": true})).unwrap();
+    s.agent = Some(vec![crate::agent::Class::Accounts]);
+    s.run("account.edit", &json!({"id": id, "legacyTls": false})).unwrap();
+    assert!(!s.mailbox.account(id).unwrap().legacy_tls);
+}

@@ -758,8 +758,8 @@ msgstr ""
 "Fiók-\n"
 "beállítások"
 
-#. command label, interface
-#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs
+#. command label, interface, ribbon location
+#: crates/engine/src/cmd/account.rs crates/ui-egui/src/account_setup.rs crates/ui-egui/src/lib.rs
 #, fuzzy
 msgid "Account Settings"
 msgstr "Fiókbeállítások"
@@ -1277,6 +1277,11 @@ msgstr "Hagyja, hogy MailCraft küldjen megosztott postafiókákról a böngész
 #, fuzzy
 msgid "Allow New Time Proposals"
 msgstr "Másik időpont javaslatának engedélyezése"
+
+#. command label
+#: crates/ui-egui/src/lib.rs
+msgid "Allow Older Encryption"
+msgstr ""
 
 #. command label
 #: crates/ui-egui/src/lib.rs
@@ -10571,6 +10576,11 @@ msgstr "Csak egy Microsoft-fiókot hívunk."
 #, fuzzy
 msgid "Only a meeting you organize has Find a Time"
 msgstr "Csak egy találkozót szervezel, ahol találsz egy időt."
+
+#. interface
+#: crates/ui-egui/src/lib.rs
+msgid "Only an account with mail servers can use the older encryption"
+msgstr ""
 
 #. what a command says
 #: crates/engine/src/cmd/unsubscribe.rs
