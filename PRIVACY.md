@@ -18,7 +18,10 @@ send ([Problem reports](#problem-reports)).
   computer, in MailCraft's settings folder, and on the servers of the mail provider you connect
   to, as with any mail program. Those files are protected as your other files are, by your
   operating system's user account (and its disk encryption, where you have that on). Mail travels
-  between your computer and your provider only over encrypted connections.
+  between your computer and your provider only over encrypted connections. For an account whose
+  servers offer only older encryption (CBC suites), you may allow it, account by account: the
+  connection is still encrypted, by your system's own TLS, less strongly, and MailCraft tries its
+  own first every time.
 - **Passwords and sign-in tokens** are kept in memory while the program runs. When you let the
   program remember a sign-in, the password or the refresh token goes to your operating system's
   credential store (Windows Credential Manager, the macOS keychain, or on Linux and FreeBSD the

@@ -326,6 +326,25 @@ Watches or changes traffic between MailCraft and its servers.
   is allowed only to loopback, for tests.
 - **No silent downgrade:** a server that doesn't offer STARTTLS when it was asked for is an error
   ("the server doesn't offer STARTTLS", `crates/net/src/sync.rs`, `crates/net/src/send.rs`).
+- **The older encryption is the owner's choice, account by account (#1504).** rustls has only the
+  AEAD suites (AES-GCM, ChaCha20-Poly1305), so an old mail server that offers only CBC suites
+  shares none with it. Such a failure is told apart from the others (`NetError::legacy_tls_would_help`:
+  rustls found no suite in common, or the server answered with `handshake_failure` or
+  `insufficient_security`), and Add Account then offers to connect with the system's own TLS
+  (`crates/net/src/system_tls.rs`: Security.framework on macOS and iOS, SChannel on Windows, OpenSSL
+  3 on Linux and FreeBSD, never on Android or in the browser), which the account keeps
+  (`Account::legacy_tls`, off by default). For such an account rustls still goes first at every
+  connection, and the system's TLS is tried only after that failure, never after another (a
+  certificate refused, a time-out, a hang-up), and only for the account's IMAP and SMTP servers:
+  nothing else ever uses it. TLS 1.2 at least; the suites are the system's (CBC with HMAC, which
+  is open to padding-oracle and timing attacks that the system's TLS works to blunt, and is
+  why it is not offered unasked); the certificate must be one the system trusts and be for the
+  server's name, with no fingerprint trusted besides; the handshake has the same 30 seconds. Only
+  the owner turns it on: an agent's `account.add` or `account.edit` with `legacyTls: true` is
+  refused at the gate whatever it was allowed, a command an agent ran that leaves an account
+  allowing it when it didn't before is undone (`agent::allows_legacy_tls`, an undo of the owner's
+  turning it off among them), and `ui.allowLegacyTls` is never an agent's. An agent may turn it
+  off.
 - **Provider discovery** asks a DNS-over-HTTPS resolver about the domain alone, never the mailbox
   name, and only when the owner presses Connect: for its mail exchangers (`mailcraft_net::lookup_mx`)
   and, for a domain nobody here knows, for its mail servers' SRV records of RFC 6186
@@ -588,7 +607,8 @@ A malicious or vulnerable dependency, GitHub Action or build step.
   client, rustup-init, wasm-opt) and WiX (a NuGet package) is an exact version checked against a recorded sha256 before
   use; trunk runs offline. Every release file gets a build provenance attestation
   (`gh attestation verify <file> -R UCS-Care-Group/mailcraft`).
-- Pure-Rust TLS (rustls), and no handwritten JavaScript.
+- Pure-Rust TLS (rustls), but for the IMAP and SMTP servers of an account whose owner allows the
+  older encryption, which may also use the system's TLS (#1504); and no handwritten JavaScript.
 
 ## Assurance case
 
@@ -629,7 +649,7 @@ settings files (`crates/engine/src/store.rs`); commands from the control channel
 | Injection into headers and protocol lines (CWE-93, -113) | CR, LF and NUL stripped from every header value and protocol argument |
 | Cross-site scripting and active content (CWE-79) | No script engine; HTML reduced to display blocks |
 | Server-side request forgery from a message (CWE-918) | Pictures only on the owner's say-so, public hosts only, re-checked on every redirect and connection |
-| Cleartext transmission (CWE-319) | TLS or STARTTLS for everything of the owner's; rustls, TLS 1.2 and 1.3 only |
+| Cleartext transmission (CWE-319) | TLS or STARTTLS for everything of the owner's; rustls, TLS 1.2 and 1.3 only, and, for the mail servers of an account whose owner allows the older encryption, the system's TLS after rustls, TLS 1.2 at least (#1504) |
 | Insecure storage of credentials (CWE-256, -522) | Sign-ins in memory or the operating system's credential store only; redacted from logs and errors |
 | Path traversal and deceptive file names (CWE-22, -451) | Every name from mail cleaned before saving: no directions reversed, invisible characters or reserved names |
 | Download of code without integrity check (CWE-494) | Updates kept only when MailCraft's own ed25519 signature over `SHA256SUMS.txt` verifies and the checksum matches |
@@ -656,6 +676,10 @@ settings files (`crates/engine/src/store.rs`); commands from the control channel
   S/MIME and OpenPGP signatures are checked where a message is read (S/MIME without a revocation
   check), but signing and encrypting what is sent, and opening encrypted mail, are not built
   (#30).
+- **The older encryption is weaker.** An account whose owner allowed it (#1504) may connect to
+  its mail servers with CBC suites, whose known weaknesses (padding oracles, Lucky Thirteen) the
+  system's TLS blunts but which an AEAD suite doesn't have. It is the owner's choice, for one
+  account, and rustls is tried first every time.
 - **The mailbox isn't encrypted at rest.** It relies on the operating system's disk encryption
   (BitLocker, FileVault, LUKS, GELI).
 - **Builds not signed by Windows or macOS.** Releases carry MailCraft's own signature over their
