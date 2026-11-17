@@ -7,7 +7,8 @@
 # Usage: packaging/freebsd/package.sh [--skip-build]
 #
 # Needs: bash, cargo, and the libraries the window loads at run time (libxkbcommon, wayland or
-# libX11, mesa-libs or vulkan-loader). Run by .github/workflows/package.yml inside a FreeBSD VM.
+# libX11, mesa-libs or vulkan-loader). OpenSSL, which the system's TLS is (#1504), comes with the
+# base system. Run by .github/workflows/package.yml inside a FreeBSD VM.
 set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
@@ -18,7 +19,7 @@ SKIP_BUILD=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --skip-build) SKIP_BUILD=1; shift ;;
-    -h | --help) sed -n '2,10p' "$0"; exit 0 ;;
+    -h | --help) sed -n '2,11p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build and package MailCraft for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
 #
-#   $DIST/mailcraft-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
+#   $DIST/mailcraft-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's and OpenSSL 3
 #   $DIST/mailcraft-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
 #   $DIST/mailcraft-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
 #   $DIST/mailcraft-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
@@ -9,7 +9,7 @@
 #
 # Usage: packaging/linux/package.sh [--skip-build] [--formats "appimage deb rpm tar"]
 #
-# Needs: cargo; nfpm for deb/rpm (https://nfpm.goreleaser.com); appimagetool and its runtime for
+# Needs: cargo and OpenSSL's headers (libssl-dev, openssl-devel: the system's TLS, #1504); nfpm for deb/rpm (https://nfpm.goreleaser.com); appimagetool and its runtime for
 # the AppImage (pinned releases, downloaded into $CARGO_TARGET_DIR and checked against their
 # sha256 if APPIMAGETOOL / APPIMAGE_RUNTIME don't name them). Build on an old distro (CI:
 # Ubuntu 22.04, glibc 2.35) so the binaries run on newer ones. Optional: desktop-file-validate,
