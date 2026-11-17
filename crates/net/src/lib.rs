@@ -72,6 +72,8 @@ mod send;
 pub mod subscription;
 #[cfg(not(target_arch = "wasm32"))]
 mod sync;
+#[cfg(all(feature = "legacy-tls", not(any(target_arch = "wasm32", target_os = "android"))))]
+mod system_tls;
 #[cfg(not(target_arch = "wasm32"))]
 mod tls;
 #[cfg(not(target_arch = "wasm32"))]
@@ -322,6 +324,11 @@ mod report_tests;
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod no_shared_suite_tests;
+
+// The older encryption against OpenSSL offering only a CBC suite (#1504).
+#[cfg(test)]
+#[cfg(all(target_os = "linux", feature = "legacy-tls"))]
+mod system_tls_tests;
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod said_tests;

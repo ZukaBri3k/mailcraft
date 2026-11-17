@@ -21575,7 +21575,7 @@ msgid "the command was refused"
 msgstr "命令被拒绝"
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 #, fuzzy
 msgid "the connection couldn't be set up"
 msgstr "无法建立连接"
@@ -22181,7 +22181,7 @@ msgid "the server sent {n} bytes in one piece, more than MailCraft accepts"
 msgstr "服务器一次发送了 {n} 字节，超过 MailCraft 允许的大小"
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 #, fuzzy
 msgid "the server took too long"
 msgstr "服务器响应超时"
@@ -22479,6 +22479,11 @@ msgstr "此账户没有保存它的权限"
 #, fuzzy
 msgid "this account sends no mail, so a message can't wait for a time: send it now, or save it as a draft"
 msgstr "此账户不发送邮件，因此邮件无法等待某个时间：请立即发送，或存为草稿"
+
+#. why a mail server couldn't be used
+#: crates/net/src/transport.rs
+msgid "this build of MailCraft has no older encryption"
+msgstr ""
 
 #. what a command says
 #: crates/engine/src/cmd/people.rs

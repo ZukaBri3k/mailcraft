@@ -387,6 +387,13 @@ pub struct Account {
     /// one, and for an account that signs in on the provider's page, whose token always goes.
     #[serde(skip_serializing_if = "is_false", deserialize_with = "crate::sync::lenient_or_default")]
     pub outgoing_without_sign_in: bool,
+    /// The owner allows the older encryption for this account's mail servers (IMAP, SMTP): when
+    /// rustls finds no cipher suite in common with one of them (an old server that offers only
+    /// CBC suites), the system's own TLS is tried, TLS 1.2 at least, with the certificates the
+    /// system trusts. Off in a file from before there was one, and for an account without mail
+    /// servers.
+    #[serde(skip_serializing_if = "is_false", deserialize_with = "crate::sync::lenient_or_default")]
+    pub legacy_tls: bool,
     /// The signature new messages start with (a [`Signature`] name; empty for none).
     #[serde(skip_serializing_if = "String::is_empty")]
     pub signature: String,

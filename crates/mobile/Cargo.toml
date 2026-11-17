@@ -23,7 +23,7 @@ mailcraft-link = { workspace = true }
 mailcraft-mime = { workspace = true }
 mailcraft-i18n = { workspace = true }
 mailcraft-names = { workspace = true }
-mailcraft-net = { workspace = true }
+mailcraft-net = { workspace = true, features = ["legacy-tls"] }
 mailcraft-time = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

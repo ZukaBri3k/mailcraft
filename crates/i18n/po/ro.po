@@ -21653,7 +21653,7 @@ msgid "the command was refused"
 msgstr "comanda a fost refuzată"
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 #, fuzzy
 msgid "the connection couldn't be set up"
 msgstr "conexiunea nu a putut fi stabilită"
@@ -22259,7 +22259,7 @@ msgid "the server sent {n} bytes in one piece, more than MailCraft accepts"
 msgstr "serverul a trimis {n} octeți dintr-o bucată, mai mult decât acceptă MailCraft"
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 #, fuzzy
 msgid "the server took too long"
 msgstr "serverul a durat prea mult"
@@ -22557,6 +22557,11 @@ msgstr "acest cont nu are voie să-l salveze"
 #, fuzzy
 msgid "this account sends no mail, so a message can't wait for a time: send it now, or save it as a draft"
 msgstr "acest cont nu trimite poștă, deci un mesaj nu poate aștepta o oră: trimiteți-l acum sau salvați-l ca schiță"
+
+#. why a mail server couldn't be used
+#: crates/net/src/transport.rs
+msgid "this build of MailCraft has no older encryption"
+msgstr ""
 
 #. what a command says
 #: crates/engine/src/cmd/people.rs

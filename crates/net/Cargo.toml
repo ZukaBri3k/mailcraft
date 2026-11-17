@@ -46,7 +46,16 @@ schannel = { workspace = true }
 [target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
 cryptoki = "0.12.1"
 
+# The system's own TLS, for an account whose owner allows the older encryption (`legacy-tls`,
+# #1504). Not on Android, whose system TLS is Java's: OpenSSL would have to come with the app.
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "android")))'.dependencies]
+native-tls = { workspace = true, optional = true }
+
 [features]
+# The older encryption, for an account whose owner allows it (#1504): the system's own TLS, tried
+# when rustls finds no cipher suite in common with a mail server (an old server that offers only
+# CBC suites). In the desktop app and the CLI.
+legacy-tls = ["dep:native-tls"]
 # A stand-in for Microsoft Graph that holds a client to the documented contract
 # (`graph::standin`), for the tests of the crates that sit on this one. Never in a build that isn't a test's.
 stand-in = []
@@ -60,3 +69,8 @@ required-features = ["stand-in"]
 proptest = { workspace = true }
 # Runtime-generated certificates for the loopback STARTTLS fake only.
 rcgen = { workspace = true }
+
+# A server that offers only CBC suites, for the older encryption's tests (#1504): OpenSSL is what
+# the system's TLS is on Linux, so it is in the tree there already.
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+openssl = "0.10.82"

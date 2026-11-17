@@ -2515,6 +2515,9 @@ fn hostile_params_never_panic() {
         }}),
         json!({"conditions": [{"type": "x"}, 5, null], "actions": [{"type": "moveTo", "value": "x"}], "name": "r"}),
         json!({"email": "a@b.example", "incoming": {"host": "", "port": 1e9, "security": 5}, "outgoing": 7}),
+        // The older encryption (#1504): a choice that is no choice, on an account and on none.
+        json!({"email": "a@b.example", "incoming": {"host": "imap.b.example"}, "legacyTls": "yes"}),
+        json!({"id": 1, "legacyTls": [true], "incoming": null}),
         json!({"emails": [1, null, {"value": 2}], "phones": "x", "address": {"street": 5}, "birthday": 5, "workDays": [], "weekStart": 1}),
         // A merge of contacts (#506): itself, twice, nobody, nonsense choices.
         json!({"keep": 1, "others": [1, 1, 0, -1, "x", 1e300], "ids": [1, 1], "fields": {"first": "x", "emails": 18446744073709551615u64, "": null}}),

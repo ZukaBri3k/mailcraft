@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use mailcraft_model::{Security, Server};
+use mailcraft_model::{Account, Security, Server};
 use rustls::pki_types::ServerName;
 use rustls::{ClientConfig, ClientConnection, StreamOwned};
 
@@ -78,14 +78,41 @@ impl Default for Patience {
 /// Which TLS a mail connection (IMAP, SMTP) shakes hands with.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum Stack {
-    /// rustls, with its AEAD suites alone (AES-GCM, ChaCha20-Poly1305): every connection.
+    /// rustls, with its AEAD suites alone (AES-GCM, ChaCha20-Poly1305): every connection first.
     #[default]
     Rustls,
+    /// The system's own TLS (`crate::system_tls`): the older encryption, for an account whose
+    /// owner allows it, after rustls found no cipher suite in common with its server ([`older`]).
+    System,
+}
+
+/// Whether this build has the older encryption: the system's own TLS (`legacy-tls`; not on Android).
+pub(crate) const SYSTEM_TLS: bool = cfg!(all(feature = "legacy-tls", not(target_os = "android")));
+
+/// The stack to try again with after rustls found no cipher suite in common with one of
+/// `account`'s mail servers: the system's, when the owner allows the older encryption and this
+/// build has it.
+pub(crate) fn older(account: &Account) -> Option<Stack> {
+    (account.legacy_tls && SYSTEM_TLS).then_some(Stack::System)
 }
 
 enum Io {
     Plain(TcpStream),
     Tls(Box<StreamOwned<ClientConnection, TcpStream>>),
+    #[cfg(all(feature = "legacy-tls", not(target_os = "android")))]
+    System(Box<native_tls::TlsStream<TcpStream>>),
+}
+
+impl Io {
+    /// The connection under the encryption.
+    fn tcp(&self) -> &TcpStream {
+        match self {
+            Io::Plain(tcp) => tcp,
+            Io::Tls(tls) => &tls.sock,
+            #[cfg(all(feature = "legacy-tls", not(target_os = "android")))]
+            Io::System(tls) => tls.get_ref(),
+        }
+    }
 }
 
 /// A connection, encrypted or (to this machine, or before STARTTLS) not.
@@ -118,10 +145,7 @@ impl<'a> Stream<'a> {
     pub(crate) fn leave(&mut self) {
         self.cancel = None;
         self.patience = FAREWELL_TIMEOUT;
-        let tcp = match &self.io {
-            Io::Plain(tcp) => tcp,
-            Io::Tls(tls) => &tls.sock,
-        };
+        let tcp = self.io.tcp();
         let _ = tcp.set_read_timeout(Some(FAREWELL_TIMEOUT));
         let _ = tcp.set_write_timeout(Some(FAREWELL_TIMEOUT));
     }
@@ -130,10 +154,7 @@ impl<'a> Stream<'a> {
     /// never for ever): for a connection kept open ([`crate::kept`]) and taken up again by a
     /// request with patience of its own.
     pub(crate) fn wait_for(&mut self, io: Duration) -> std::io::Result<()> {
-        let tcp = match &self.io {
-            Io::Plain(tcp) => tcp,
-            Io::Tls(tls) => &tls.sock,
-        };
+        let tcp = self.io.tcp();
         let io = Some(io.min(IO_TIMEOUT).max(Duration::from_millis(1)));
         tcp.set_read_timeout(io).and_then(|()| tcp.set_write_timeout(io))
     }
@@ -144,20 +165,14 @@ impl<'a> Stream<'a> {
     /// few minutes a command and its answer are.
     pub(crate) fn wait_for_news(&mut self, poll: Duration, patience: Duration) -> std::io::Result<()> {
         self.patience = patience;
-        let tcp = match &self.io {
-            Io::Plain(tcp) => tcp,
-            Io::Tls(tls) => &tls.sock,
-        };
+        let tcp = self.io.tcp();
         tcp.set_read_timeout(Some(poll.max(Duration::from_millis(1))))
     }
 
     /// The waits of an ordinary command and its answer again, after [`Stream::wait_for_news`].
     pub(crate) fn answer_normally(&mut self) -> std::io::Result<()> {
         self.patience = COMMAND_TIMEOUT;
-        let tcp = match &self.io {
-            Io::Plain(tcp) => tcp,
-            Io::Tls(tls) => &tls.sock,
-        };
+        let tcp = self.io.tcp();
         tcp.set_read_timeout(Some(IO_TIMEOUT))
     }
 
@@ -167,6 +182,8 @@ impl<'a> Stream<'a> {
         match &self.io {
             Io::Plain(_) => None,
             Io::Tls(tls) => tls.conn.peer_certificates()?.first().map(|c| c.as_ref().to_vec()),
+            #[cfg(all(feature = "legacy-tls", not(target_os = "android")))]
+            Io::System(tls) => tls.peer_certificate().ok()??.to_der().ok(),
         }
     }
 
@@ -193,6 +210,8 @@ impl Read for Stream<'_> {
         let n = match &mut self.io {
             Io::Plain(tcp) => tcp.read(buf),
             Io::Tls(tls) => tls.read(buf),
+            #[cfg(all(feature = "legacy-tls", not(target_os = "android")))]
+            Io::System(tls) => tls.read(buf),
         }?;
         self.moved = self.moved.saturating_add(n as u64);
         Ok(n)
@@ -205,6 +224,8 @@ impl Write for Stream<'_> {
         let n = match &mut self.io {
             Io::Plain(tcp) => tcp.write(buf),
             Io::Tls(tls) => tls.write(buf),
+            #[cfg(all(feature = "legacy-tls", not(target_os = "android")))]
+            Io::System(tls) => tls.write(buf),
         }?;
         self.moved = self.moved.saturating_add(n as u64);
         Ok(n)
@@ -215,6 +236,8 @@ impl Write for Stream<'_> {
         match &mut self.io {
             Io::Plain(tcp) => tcp.flush(),
             Io::Tls(tls) => tls.flush(),
+            #[cfg(all(feature = "legacy-tls", not(target_os = "android")))]
+            Io::System(tls) => tls.flush(),
         }
     }
 }
@@ -271,6 +294,7 @@ pub(crate) fn open<'a>(server: &Server, service: Service, patience: &Patience) -
 pub(crate) fn open_on<'a>(server: &Server, service: Service, patience: &Patience, stack: Stack) -> Result<(Stream<'a>, String), NetError> {
     match stack {
         Stack::Rustls => open_with(server, service, patience, None),
+        Stack::System => open_shaking(server, service, patience, secure_system),
     }
 }
 
@@ -281,11 +305,21 @@ pub(crate) fn open_with<'a>(
     patience: &Patience,
     tls: Option<Arc<ClientConfig>>,
 ) -> Result<(Stream<'a>, String), NetError> {
+    open_shaking(server, service, patience, |tcp, host| secure(tcp, host, tls))
+}
+
+/// [`open`], shaking hands with `shake` when the server asks for TLS.
+fn open_shaking<'a>(
+    server: &Server,
+    service: Service,
+    patience: &Patience,
+    shake: impl FnOnce(TcpStream, &str) -> Result<Stream<'a>, NetError>,
+) -> Result<(Stream<'a>, String), NetError> {
     let host = checked_host(server)?;
     log::debug!("connecting to {host}:{} ({service:?}, {})", port(server, service), server.security.code());
     let (connect, io) = (patience.connect.min(CONNECT_TIMEOUT), patience.io.min(IO_TIMEOUT));
     let tcp = dial(&host, port(server, service), server.security == Security::None, connect, io)?;
-    let mut stream = if server.security == Security::Tls { secure(tcp, &host, tls)? } else { Stream::over(Io::Plain(tcp)) };
+    let mut stream = if server.security == Security::Tls { shake(tcp, &host)? } else { Stream::over(Io::Plain(tcp)) };
     stream.patience = patience.command.min(COMMAND_TIMEOUT);
     Ok((stream, host))
 }
@@ -302,7 +336,8 @@ pub(crate) fn upgrade<'a>(stream: Stream<'a>, host: &str, stack: Stack) -> Resul
     let Stream { io, cancel, patience, .. } = stream;
     let mut secured = match (io, stack) {
         (Io::Plain(tcp), Stack::Rustls) => secure(tcp, host, None)?,
-        (tls @ Io::Tls(_), _) => Stream::over(tls),
+        (Io::Plain(tcp), Stack::System) => secure_system(tcp, host)?,
+        (tls, _) => Stream::over(tls),
     };
     (secured.cancel, secured.patience) = (cancel, patience);
     Ok(secured)
@@ -414,6 +449,20 @@ fn secure<'a>(mut tcp: TcpStream, host: &str, tls: Option<Arc<ClientConfig>>) ->
     }
     waits(&tcp, io)?;
     Ok(Stream::over(Io::Tls(Box::new(StreamOwned::new(connection, tcp)))))
+}
+
+/// Shake hands over `tcp` with the system's own TLS, the older encryption (`crate::system_tls`).
+#[cfg(all(feature = "legacy-tls", not(target_os = "android")))]
+fn secure_system<'a>(tcp: TcpStream, host: &str) -> Result<Stream<'a>, NetError> {
+    let io = tcp.read_timeout().ok().flatten().unwrap_or(IO_TIMEOUT).min(IO_TIMEOUT);
+    let tls = crate::system_tls::secure(tcp, host, io, HANDSHAKE_TIMEOUT)?;
+    Ok(Stream::over(Io::System(Box::new(tls))))
+}
+
+/// A build without the system's TLS has no older encryption ([`older`] never asks for it).
+#[cfg(not(all(feature = "legacy-tls", not(target_os = "android"))))]
+fn secure_system<'a>(_: TcpStream, host: &str) -> Result<Stream<'a>, NetError> {
+    Err(NetError::tls(host, said!("this build of MailCraft has no older encryption")))
 }
 
 /// Why a handshake failed, in a few words.

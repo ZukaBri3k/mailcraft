@@ -18,7 +18,7 @@ mailcraft-time = { workspace = true }
 mailcraft-model = { workspace = true }
 mailcraft-engine = { workspace = true }
 mailcraft-mcp = { workspace = true }
-mailcraft-net = { workspace = true }
+mailcraft-net = { workspace = true, features = ["legacy-tls"] }
 serde_json = { workspace = true }
 
 [dev-dependencies]

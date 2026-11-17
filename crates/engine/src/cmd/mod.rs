@@ -104,6 +104,8 @@ pub mod keys;
 mod keys_tests;
 #[cfg(test)]
 mod leave_compose_tests;
+#[cfg(test)]
+mod legacy_tls_tests;
 pub mod mail;
 #[cfg(test)]
 mod moves_between_accounts_tests;

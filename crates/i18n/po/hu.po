@@ -21582,7 +21582,7 @@ msgid "the command was refused"
 msgstr "a parancsot elutasították"
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 #, fuzzy
 msgid "the connection couldn't be set up"
 msgstr "A kapcsolat nem volt beépítve."
@@ -22188,7 +22188,7 @@ msgid "the server sent {n} bytes in one piece, more than MailCraft accepts"
 msgstr "a szerver egy darabban küldte a {n} bájtokat, többet, mint amennyit MailCraft elfogad"
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 #, fuzzy
 msgid "the server took too long"
 msgstr "a szerver túl sokáig tartott"
@@ -22486,6 +22486,11 @@ msgstr "a fióknak nincs engedélye a mentéshez"
 #, fuzzy
 msgid "this account sends no mail, so a message can't wait for a time: send it now, or save it as a draft"
 msgstr "ez a fiók nem küld levelet, ezért az üzenet nem várhat időpontra: küldje el most, vagy mentse piszkozatként"
+
+#. why a mail server couldn't be used
+#: crates/net/src/transport.rs
+msgid "this build of MailCraft has no older encryption"
+msgstr ""
 
 #. what a command says
 #: crates/engine/src/cmd/people.rs

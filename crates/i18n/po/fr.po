@@ -21492,7 +21492,7 @@ msgid "the command was refused"
 msgstr "la commande a été refusée"
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 #, fuzzy
 msgid "the connection couldn't be set up"
 msgstr "la connexion n'a pas pu être établie"
@@ -22098,7 +22098,7 @@ msgid "the server sent {n} bytes in one piece, more than MailCraft accepts"
 msgstr "le serveur a envoyé {n} octets d'un seul tenant, plus que MailCraft n'en accepte"
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 #, fuzzy
 msgid "the server took too long"
 msgstr "le serveur a mis trop de temps"
@@ -22396,6 +22396,11 @@ msgstr "ce compte n'est pas autorisé à l'enregistrer"
 #, fuzzy
 msgid "this account sends no mail, so a message can't wait for a time: send it now, or save it as a draft"
 msgstr "ce compte n'envoie pas de courrier, un message ne peut donc pas attendre une heure : envoyez-le maintenant ou enregistrez-le en brouillon"
+
+#. why a mail server couldn't be used
+#: crates/net/src/transport.rs
+msgid "this build of MailCraft has no older encryption"
+msgstr "cette version de MailCraft n'a pas le chiffrement ancien"
 
 #. what a command says
 #: crates/engine/src/cmd/people.rs

@@ -75,12 +75,33 @@ pub(crate) fn open_smtp<'a>(account: &Account, secret: &str) -> Result<Smtp<Stre
 }
 
 /// [`open_smtp`], waiting as `patience` says, and giving up at once when `cancel` is set while
-/// it is under way.
+/// it is under way. When rustls finds no cipher suite in common with the server, the older
+/// encryption is tried, if the owner allows it ([`transport::older`]).
 pub(crate) fn open_smtp_with<'a>(
     account: &Account,
     secret: &str,
     patience: &Patience,
     cancel: Option<&'a AtomicBool>,
+) -> Result<Smtp<Stream<'a>>, NetError> {
+    match open_smtp_on(account, secret, patience, cancel, transport::Stack::Rustls) {
+        Err(e) if e.legacy_tls_would_help() => match transport::older(account) {
+            Some(stack) => {
+                log::info!("smtp: no cipher suite in common; trying the older encryption, which the owner allows");
+                open_smtp_on(account, secret, patience, cancel, stack)
+            }
+            None => Err(e),
+        },
+        opened => opened,
+    }
+}
+
+/// [`open_smtp_with`], shaking hands with `stack`.
+fn open_smtp_on<'a>(
+    account: &Account,
+    secret: &str,
+    patience: &Patience,
+    cancel: Option<&'a AtomicBool>,
+    stack: transport::Stack,
 ) -> Result<Smtp<Stream<'a>>, NetError> {
     let server = account.outgoing.as_ref().ok_or_else(|| NetError::Config(said!("the account has no outgoing server")))?;
     crate::sync::token_may_go_to(account, server, "smtp.gmail.com")?;
@@ -94,8 +115,6 @@ pub(crate) fn open_smtp_with<'a>(
             return Err(not_signed_in(account));
         }
     }
-    // rustls, which has only the AEAD suites.
-    let stack = transport::Stack::Rustls;
     let (mut stream, host) = transport::open_on(server, Service::Smtp, patience, stack)?;
     stream.watch(cancel);
     let mut smtp = Smtp::connect(stream)?;

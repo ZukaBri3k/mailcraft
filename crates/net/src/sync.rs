@@ -484,12 +484,33 @@ pub(crate) fn open_imap<'a>(account: &Account, secret: &str) -> Result<Imap<Stre
 }
 
 /// [`open_imap`], waiting as `patience` says, and giving up at once when `cancel` is set while
-/// it is under way.
+/// it is under way. When rustls finds no cipher suite in common with the server, the older
+/// encryption is tried, if the owner allows it ([`transport::older`]).
 pub(crate) fn open_imap_with<'a>(
     account: &Account,
     secret: &str,
     patience: &Patience,
     cancel: Option<&'a AtomicBool>,
+) -> Result<Imap<Stream<'a>>, NetError> {
+    match open_imap_on(account, secret, patience, cancel, transport::Stack::Rustls) {
+        Err(e) if e.legacy_tls_would_help() => match transport::older(account) {
+            Some(stack) => {
+                log::info!("imap: no cipher suite in common; trying the older encryption, which the owner allows");
+                open_imap_on(account, secret, patience, cancel, stack)
+            }
+            None => Err(e),
+        },
+        opened => opened,
+    }
+}
+
+/// [`open_imap_with`], shaking hands with `stack`.
+fn open_imap_on<'a>(
+    account: &Account,
+    secret: &str,
+    patience: &Patience,
+    cancel: Option<&'a AtomicBool>,
+    stack: transport::Stack,
 ) -> Result<Imap<Stream<'a>>, NetError> {
     let server = account.incoming.as_ref().ok_or_else(|| NetError::Config(said!("the account has no incoming server")))?;
     token_may_go_to(account, server, "imap.gmail.com")?;
@@ -504,8 +525,6 @@ pub(crate) fn open_imap_with<'a>(
     if account.oauth.is_none() && secret.is_empty() {
         return Err(NetError::Config(said!("enter a password to sign in")));
     }
-    // rustls, which has only the AEAD suites.
-    let stack = transport::Stack::Rustls;
     let (mut stream, host) = transport::open_on(server, Service::Imap, patience, stack)?;
     stream.watch(cancel);
     let mut imap = Imap::connect(stream)?;

@@ -25,7 +25,7 @@ mailcraft-ui-egui = { workspace = true }
 # The control key file's location (shared with the MCP bridge).
 mailcraft-control-key = { workspace = true }
 # Sockets: Send/Receive runs on a background thread.
-mailcraft-net = { workspace = true }
+mailcraft-net = { workspace = true, features = ["legacy-tls"] }
 # Exchange server accounts (#252): the requests and the readers of the answers; the HTTPS is `mailcraft-net`'s.
 mailcraft-ews = { workspace = true }
 # OpenPGP keys kept in GnuPG (#30): the conversation with gpg-agent; finding and opening its socket is `gpg_agent.rs`.

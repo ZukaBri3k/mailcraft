@@ -17910,7 +17910,7 @@ msgid "the command was refused"
 msgstr ""
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 msgid "the connection couldn't be set up"
 msgstr ""
 
@@ -18415,7 +18415,7 @@ msgid "the server sent {n} bytes in one piece, more than MailCraft accepts"
 msgstr ""
 
 #. why a mail server couldn't be used
-#: crates/net/src/transport.rs
+#: crates/net/src/system_tls.rs crates/net/src/transport.rs
 msgid "the server took too long"
 msgstr ""
 
@@ -18662,6 +18662,11 @@ msgstr ""
 #. what a command says
 #: crates/engine/src/cmd/compose.rs
 msgid "this account sends no mail, so a message can't wait for a time: send it now, or save it as a draft"
+msgstr ""
+
+#. why a mail server couldn't be used
+#: crates/net/src/transport.rs
+msgid "this build of MailCraft has no older encryption"
 msgstr ""
 
 #. what a command says

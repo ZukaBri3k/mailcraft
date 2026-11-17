@@ -43,6 +43,27 @@ impl Authority {
     /// As [`Authority::server`], with the certificate good for `uses` (and not necessarily for
     /// servers), and the certificate's DER as well.
     pub(crate) fn server_for(&self, names: &[&str], uses: Vec<ExtendedKeyUsagePurpose>) -> (Arc<ServerConfig>, Vec<u8>) {
+        let (cert, key) = self.issue(names, uses);
+        let config = ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_no_client_auth()
+            .with_single_cert(vec![cert.der().clone(), self.root()], PrivatePkcs8KeyDer::from(key.serialize_der()).into())
+            .unwrap();
+        (Arc::new(config), cert.der().to_vec())
+    }
+}
+
+impl Authority {
+    /// A server certificate for `names` that this authority issued, and its key (PKCS #8), both
+    /// DER: for a server that isn't rustls.
+    #[cfg_attr(not(all(target_os = "linux", feature = "legacy-tls")), allow(dead_code))]
+    pub(crate) fn identity(&self, names: &[&str]) -> (Vec<u8>, Vec<u8>) {
+        let (cert, key) = self.issue(names, vec![ExtendedKeyUsagePurpose::ServerAuth]);
+        (cert.der().to_vec(), key.serialize_der())
+    }
+
+    fn issue(&self, names: &[&str], uses: Vec<ExtendedKeyUsagePurpose>) -> (rcgen::Certificate, KeyPair) {
         let mut params = CertificateParams::new(names.iter().map(|n| n.to_string()).collect::<Vec<_>>()).unwrap();
         params.distinguished_name.push(DnType::CommonName, names.first().copied().unwrap_or("server"));
         params.is_ca = IsCa::ExplicitNoCa;
@@ -51,13 +72,7 @@ impl Authority {
         validity(&mut params);
         let key = KeyPair::generate().unwrap();
         let cert = params.signed_by(&key, &self.issuer).unwrap();
-        let config = ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
-            .with_safe_default_protocol_versions()
-            .unwrap()
-            .with_no_client_auth()
-            .with_single_cert(vec![cert.der().clone(), self.root()], PrivatePkcs8KeyDer::from(key.serialize_der()).into())
-            .unwrap();
-        (Arc::new(config), cert.der().to_vec())
+        (cert, key)
     }
 }
 
